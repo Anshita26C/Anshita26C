@@ -1,0 +1,259 @@
+import React, { createContext, useContext, useState } from "react";
+
+const ChatContext = createContext();
+
+export const useChat = () => useContext(ChatContext);
+
+export const ChatProvider = ({ children }) => {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [input, setInput] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversationId, setSelectedConversationId] = useState(null);
+
+  const addMessage = (message) => {
+    setMessages((prev) => [...prev, message]);
+  };
+
+  const clearMessages = () => setMessages([]);
+
+  const value = {
+    messages,
+    loading,
+    input,
+    setInput,
+    setLoading,
+    addMessage,
+    conversations,
+    setConversations,
+    setSelectedConversationId,
+    selectedConversationId,
+    clearMessages,
+  };
+
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+};
+import React from "react";
+import "../styles.css";
+
+const Message = ({ sender, text }) => {
+  return (
+    <div className={`message ${sender === "user" ? "user" : "ai"}`}>
+      <div className="bubble">{text}</div>
+    </div>
+  );
+};
+
+export default Message;
+import React from "react";
+import { useChat } from "../context/ChatContext";
+import Message from "./Message";
+
+const MessageList = () => {
+  const { messages } = useChat();
+
+  return (
+    <div className="message-list">
+      {messages.map((msg, index) => (
+        <Message key={index} sender={msg.sender} text={msg.text} />
+      ))}
+    </div>
+  );
+};
+
+export default MessageList;
+import React from "react";
+import { useChat } from "../context/ChatContext";
+
+const UserInput = () => {
+  const { input, setInput, addMessage, setLoading } = useChat();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    addMessage({ sender: "user", text: input });
+    setInput("");
+    setLoading(true);
+
+    // Simulate API call
+    setTimeout(() => {
+      addMessage({ sender: "ai", text: `AI Response to: "${input}"` });
+      setLoading(false);
+    }, 1000);
+  };
+
+  return (
+    <form className="user-input" onSubmit={handleSubmit}>
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Type your message..."
+      />
+      <button type="submit">Send</button>
+    </form>
+  );
+};
+
+export default UserInput;
+import React from "react";
+import { useChat } from "../context/ChatContext";
+
+const HistoryPanel = () => {
+  const {
+    conversations,
+    setSelectedConversationId,
+    selectedConversationId,
+    setMessages,
+  } = useChat();
+
+  const handleSelect = (session) => {
+    setSelectedConversationId(session.id);
+    setMessages(session.messages);
+  };
+
+  return (
+    <div className="history-panel">
+      <h3>Conversation History</h3>
+      {conversations.map((session) => (
+        <div
+          key={session.id}
+          className={`history-item ${
+            selectedConversationId === session.id ? "active" : ""
+          }`}
+          onClick={() => handleSelect(session)}
+        >
+          {session.title}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default HistoryPanel;
+import React from "react";
+import MessageList from "./MessageList";
+import UserInput from "./UserInput";
+import HistoryPanel from "./HistoryPanel";
+import { useChat } from "../context/ChatContext";
+
+const ChatWindow = () => {
+  const { loading } = useChat();
+
+  return (
+    <div className="chat-container">
+      <HistoryPanel />
+      <div className="chat-window">
+        <MessageList />
+        {loading && <div className="loading">Typing...</div>}
+        <UserInput />
+      </div>
+    </div>
+  );
+};
+
+export default ChatWindow;
+import React from "react";
+import { ChatProvider } from "./context/ChatContext";
+import ChatWindow from "./components/ChatWindow";
+
+const App = () => (
+  <ChatProvider>
+    <ChatWindow />
+  </ChatProvider>
+);
+
+export default App;
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./styles.css";
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+body {
+  font-family: sans-serif;
+  margin: 0;
+  background: #f4f4f4;
+}
+
+.chat-container {
+  display: flex;
+  height: 100vh;
+}
+
+.history-panel {
+  width: 250px;
+  background: #eeeeee;
+  padding: 10px;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 10px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  background: white;
+  border-radius: 5px;
+}
+
+.history-item.active {
+  background-color: #d0ebff;
+}
+
+.chat-window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.message {
+  margin: 5px 0;
+}
+
+.message.user .bubble {
+  background: #d1ffd1;
+  align-self: flex-end;
+}
+
+.message.ai .bubble {
+  background: #e2e2ff;
+  align-self: flex-start;
+}
+
+.bubble {
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 60%;
+  display: inline-block;
+}
+
+.user-input {
+  display: flex;
+  gap: 10px;
+}
+
+.user-input input {
+  flex: 1;
+  padding: 10px;
+}
+
+.user-input button {
+  padding: 10px 20px;
+}
+
+.loading {
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+
