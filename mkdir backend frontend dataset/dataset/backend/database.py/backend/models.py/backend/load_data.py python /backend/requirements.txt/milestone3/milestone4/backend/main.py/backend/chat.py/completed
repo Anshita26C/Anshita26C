@@ -1,0 +1,19 @@
+from fastapi import FastAPI
+from backend.chat import router as chat_router
+
+app = FastAPI()
+app.include_router(chat_router, prefix="/api")
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+router = APIRouter()
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_id: int = None
+
+@router.post("/chat")
+def chat_endpoint(request: ChatRequest):
+    # Store user msg, generate fake AI response for now
+    response_text = f"You said: {request.message}"
+    return {"response": response_text}
