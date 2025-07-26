@@ -1,0 +1,89 @@
+project-root/ ├── backend/ │   ├── app.js │   ├── routes/ │   │   └── chatbot.js │   ├── data/ │   │   ├── inventory_items.csv │   │   ├── order_items.csv │   │   ├── orders.csv │   │   ├── products.csv │   │   ├── distribution_centers.csv │   │   └── users.csv │   └── utils/ │       └── csvLoader.js ├── frontend/ │   ├── public/ │   └── src/ │       ├── App.js │       ├── Chatbot.js │       └── index.js ├── .gitignore ├── README.md └── package.json
+
+// backend/app.js const express = require('express'); const app = express(); const chatbotRoutes = require('./routes/chatbot');
+
+app.use(express.json()); app.use('/api/chatbot', chatbotRoutes);
+
+const PORT = process.env.PORT || 5000; app.listen(PORT, () => console.log(Server running on port ${PORT}));
+
+// backend/routes/chatbot.js const express = require('express'); const router = express.Router(); const { loadCSV } = require('../utils/csvLoader'); const path = require('path'); const csv = require('csv-parser'); const fs = require('fs');
+
+// Load data files const productPath = path.join(_dirname, '../data/products.csv'); const orderItemsPath = path.join(dirname, '../data/order_items.csv'); const inventoryPath = path.join(_dirname, '../data/inventory_items.csv');
+
+let products = [], orderItems = [], inventory = [];
+
+loadCSV(productPath).then(data => products = data); loadCSV(orderItemsPath).then(data => orderItems = data); loadCSV(inventoryPath).then(data => inventory = data);
+
+// 1. Top 5 most sold products router.get('/top-products', (req, res) => { const countMap = {}; orderItems.forEach(item => { if (item.status === 'delivered') { countMap[item.product_id] = (countMap[item.product_id] || 0) + 1; } }); const sorted = Object.entries(countMap).sort((a, b) => b[1] - a[1]).slice(0, 5); const result = sorted.map(([id, count]) => { const product = products.find(p => p.id === id); return { name: product?.name || 'Unknown', count }; }); res.json(result); });
+
+// 2. Order status by order ID router.get('/order-status/:id', (req, res) => { const id = req.params.id; const items = orderItems.filter(item => item.order_id === id); if (items.length === 0) return res.status(404).json({ message: 'Order not found' });
+
+const statuses = items.map(item => ({ product_id: item.product_id, status: item.status, shipped_at: item.shipped_at, delivered_at: item.delivered_at })); res.json({ order_id: id, items: statuses }); });
+
+// 3. Classic T-Shirts in stock router.get('/stock', (req, res) => { const nameQuery = req.query.product || 'Classic T-Shirts'; const productIds = products.filter(p => p.name === nameQuery).map(p => p.id); const inStock = inventory.filter(item => productIds.includes(item.product_id) && !item.sold_at); res.json({ product: nameQuery, in_stock: inStock.length }); });
+
+module.exports = router;
+
+// backend/utils/csvLoader.js const fs = require('fs'); const csv = require('csv-parser');
+
+function loadCSV(filePath) { return new Promise((resolve, reject) => { const results = []; fs.createReadStream(filePath) .pipe(csv()) .on('data', (data) => results.push(data)) .on('end', () => resolve(results)) .on('error', reject); }); }
+
+module.exports = { loadCSV };
+
+// frontend/src/App.js import React from 'react'; import Chatbot from './Chatbot'; function App() { return ( <div className="App"> <h1>Customer Support Chatbot</h1> <Chatbot /> </div> ); } export default App;
+
+// frontend/src/Chatbot.js import React, { useState } from 'react'; function Chatbot() { const [question, setQuestion] = useState(''); const [answer, setAnswer] = useState(null);
+
+const handleAsk = async () => { if (question.includes('top 5')) { const res = await fetch('/api/chatbot/top-products'); const data = await res.json(); setAnswer(JSON.stringify(data)); } else if (question.includes('order ID')) { const id = question.match(/\d+/)?.[0]; const res = await fetch(/api/chatbot/order-status/${id}); const data = await res.json(); setAnswer(JSON.stringify(data)); } else if (question.includes('T-Shirts')) { const res = await fetch('/api/chatbot/stock?product=Classic T-Shirts'); const data = await res.json(); setAnswer(JSON.stringify(data)); } else { setAnswer('Sorry, I cannot understand the query.'); } };
+
+return ( <div> <input value={question} onChange={(e) => setQuestion(e.target.value)} /> <button onClick={handleAsk}>Ask</button> <pre>{answer}</pre> </div> ); } export default Chatbot;
+
+// frontend/src/index.js import React from 'react'; import ReactDOM from 'react-dom/client'; import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root')); root.render( <React.StrictMode> <App /> </React.StrictMode> );
+
+// README.md
+
+Milestone 1: Customer Support Chatbot (Recruit41)
+
+This project implements the environment setup and basic logic for a full-stack chatbot for an e-commerce clothing platform.
+
+Features
+
+Top 5 most sold products
+
+Check order status by ID
+
+Find how many "Classic T-Shirts" are in stock
+
+
+Structure
+
+backend/: Express server with endpoints
+
+frontend/: React-based chatbot interface
+
+data/: Place the dataset CSV files from GitHub
+
+
+Run Project
+
+1. Install Node.js and npm
+
+
+2. Run backend:
+
+cd backend
+npm install
+node app.js
+
+
+3. Run frontend:
+
+cd frontend
+npm install
+npm start
+
+
+
+Note: Use public GitHub repo and commit after each milestone.
